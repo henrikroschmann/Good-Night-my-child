@@ -38,9 +38,7 @@ const StoryGenerator: React.FC = () => {
       "https://api.openai.com/v1/chat/completions",
       {
         model: "gpt-3.5-turbo",
-        messages: [
-          { role: "user", content: "Create a good night story for children" },
-        ],
+        messages: [{ role: "user", content: storyPrompt }],
         temperature: 0.7,
       },
       {
@@ -61,30 +59,39 @@ const StoryGenerator: React.FC = () => {
       .map((sentence: string) => sentence.trim() + ".");
 
     const imageResponses = await Promise.all(
-      imagePrompts.map((prompt: any) =>
-        axios.post(
-          "https://api.openai.com/v1/images/generations",
-          {
-            model: "image-alpha-001",
-            prompt: prompt,
-            num_images: 1,
-            size: "256x256",
-            response_format: "url",
-          },
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${process.env.REACT_APP_OPENAI_API_KEY}`,
+      imagePrompts.map(async (prompt: string) => {
+        try {
+          const response = await axios.post(
+            "https://api.openai.com/v1/images/generations",
+            {
+              model: "image-alpha-001",
+              prompt: prompt,
+              num_images: 1,
+              size: "256x256",
+              response_format: "url",
             },
-          }
-        )
-      )
+            {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${process.env.REACT_APP_OPENAI_API_KEY}`,
+              },
+            }
+          );
+          return response;
+        } catch (error) {
+          console.error("Image generation failed:", error);
+          return null;
+        }
+      })
     );
     setLoading(false);
 
-    const generatedImages = imageResponses.map(
+    const successfulResponses = imageResponses.filter(response => response !== null);
+
+    const generatedImages = successfulResponses.map(
       (img: any) => img.data.data[0].url
     );
+
     setImages(generatedImages);
 
     // Save the story and images
